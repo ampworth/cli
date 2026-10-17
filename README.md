@@ -17,6 +17,12 @@ needs an internet connection.
 
 ## Install
 
+With Homebrew, on macOS or Linux:
+
+```sh
+brew install ampworth/tap/ampworth
+```
+
 With Go 1.27 or later:
 
 ```sh
@@ -107,6 +113,23 @@ The methods and data cover the United Kingdom only. The answers are for
 understanding a system and checking a quotation. An installation still needs a
 survey and a design from a certified installer. Ampworth isn't affiliated with
 MCS, sells nothing and recommends no installer.
+
+## Releasing
+
+Releases run on a Mac, because the macOS binary is signed with `codesign` and
+notarised with `notarytool`, using credentials in the keychain:
+
+1. Once: `make notary-setup` stores a notarytool profile with your Apple ID
+   and an app-specific password. The Developer ID Application certificate must
+   be in the keychain too.
+2. `make tag VERSION=v0.2.0` tags the version and pushes the tag.
+3. `make release-check` checks everything a release needs.
+4. `make release` builds every binary, signs and notarises the macOS one,
+   publishes the GitHub release, and updates the cask in
+   [ampworth/homebrew-tap](https://github.com/ampworth/homebrew-tap).
+
+It uses your `gh` login for GitHub. Optional settings are in
+`.env.release.example`.
 
 ## Support
 

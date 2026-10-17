@@ -1,22 +1,50 @@
-# Builds the release binaries when a v* tag is pushed. See
-# .github/workflows/release.yml.
+# GoReleaser configuration for the ampworth CLI. Run through `make release`,
+# which checks the prerequisites first; `make release-snapshot` builds locally
+# without publishing.
 version: 2
 
 project_name: ampworth
 
+before:
+  hooks:
+    - go mod tidy
+    - go test ./...
+
 builds:
-  - main: ./cmd/ampworth
+  - id: ampworth
+    main: ./cmd/ampworth
     binary: ampworth
     env:
       - CGO_ENABLED=0
     goos: [darwin, linux, windows]
     goarch: [amd64, arm64]
-    flags: [-trimpath]
+    flags:
+      - -trimpath
     ldflags:
-      - -s -w -X main.version={{.Version}}
+      - -s -w
+      - -X main.version={{ .Version }}
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+# One macOS binary for Intel and Apple silicon; it is what gets signed,
+# notarised and shipped in the Homebrew cask.
+#
+# Signing and notarisation use Apple's codesign and notarytool with keychain
+# credentials (scripts/notarize.sh), so a release must run on a Mac. Snapshots
+# skip them.
+universal_binaries:
+  - id: ampworth
+    replace: true
+    hooks:
+      post:
+        - cmd: ./scripts/notarize.sh "{{ .Path }}" "{{ .IsSnapshot }}"
+          output: true
 
 archives:
-  - formats: [tar.gz]
+  - id: ampworth
+    ids: [ampworth]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ if eq .Arch "all" }}universal{{ else }}{{ .Arch }}{{ end }}
+    formats: [tar.gz]
     format_overrides:
       - goos: windows
         formats: [zip]
@@ -27,3 +55,30 @@ checksum:
 
 changelog:
   sort: asc
+
+release:
+  github:
+    owner: ampworth
+    name: cli
+  draft: false
+  prerelease: auto
+
+# The macOS binary is signed and notarised, so the cask needs no quarantine
+# workaround.
+homebrew_casks:
+  - name: ampworth
+    ids: [ampworth]
+    binaries: [ampworth]
+    description: UK solar PV and heat pump calculators that follow the MCS standards, and their guides.
+    homepage: https://github.com/ampworth/cli
+    license: MIT
+    directory: Casks
+    commit_author:
+      name: goreleaserbot
+      email: bot@goreleaser.com
+    commit_msg_template: "ampworth {{ .Tag }}"
+    repository:
+      owner: ampworth
+      name: homebrew-tap
+      branch: main
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"

@@ -1,3 +1,4 @@
 /ampworth
 /dist/
 .DS_Store
+.env.release
