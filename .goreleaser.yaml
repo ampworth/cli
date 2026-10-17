@@ -1,0 +1,29 @@
+# Builds the release binaries when a v* tag is pushed. See
+# .github/workflows/release.yml.
+version: 2
+
+project_name: ampworth
+
+builds:
+  - main: ./cmd/ampworth
+    binary: ampworth
+    env:
+      - CGO_ENABLED=0
+    goos: [darwin, linux, windows]
+    goarch: [amd64, arm64]
+    flags: [-trimpath]
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+
+archives:
+  - formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files: [README.md, LICENSE]
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
